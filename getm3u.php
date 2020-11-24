@@ -1,39 +1,78 @@
+#!/usr/bin/php
 <?php
 
 use TorneLIB\Model\Type\dataType;
 use TorneLIB\Model\Type\requestMethod;
 use TorneLIB\Module\Network\NetWrapper;
 
+$mpDecryptBinary = '/usr/local/mp4decrypt/bin/mp4decrypt';
+$ffmpeg = '/usr/bin/ffmpeg';
+
 require_once(__DIR__ . '/vendor/autoload.php');
 $nw = new NetWrapper();
-$enc = new TorneLIB\Data\Aes();
+if (!isset($argv[2])) {
+    printf("Usage: %s <m3u8-manifest-or-url> <encryptionKID>:<encryptionIV>\n", $argv[0]);
+    die;
+}
+$manifest = $argv[1];
+$key = $argv[2];
+$keyData = sprintf('--key %s', $key);
+if (preg_match('/^http/i', $manifest)) {
+    $uData = explode("/", $manifest);
+    $uData = array_reverse($uData);
+    $urlPart = preg_replace('/.m3u8$/', '', array_shift($uData));
+    $basePath = implode("/", array_reverse($uData));
+    $saveAs = 'final';
+    $content = explode("\n", $nw->request($manifest)->getBody());
+} elseif (file_exists($manifest)) {
+    $saveAs = 'merge_m3u8';
+    $content = explode(
+        "\n",
+        file_get_contents($manifest)
+    );
+}
 
-$url = 'https://vod-akc-eu-north-1.media.dssott.com/ps01/disney/11b54ab5-ca04-4d2e-b58c-ce6641d36e72/r/composite_4250k_CENC_CTR_FHD_SDR_3c3b6f55-093e-4c84-8a81-24a784e895d1_8a6e127c-46ab-4ac4-b3ec-2cc765db8a8d.m3u8';
+/*$keyData = sprintf('--key 1:%s', $key);
+$moreKeys = explode(":", $key);
+if (count($moreKeys)) {
+    $keyCount = 0;
+    $keyData = '';
+    foreach ($moreKeys as $key) {
+        $keyCount++;
+        $keyData .= sprintf('--key %s:%s ', $keyCount, $key);
+    }
+}*/
 
-$uData = explode("/", $url);
-$uData = array_reverse($uData);
-array_shift($uData);
-$basePath = implode("/", array_reverse($uData));
+$cleanFirst = [
+    sprintf('%s.mp4', $saveAs),
+    'decoded.mp4',
+    'encoded.mp4',
+];
 
-$content = explode(
-    "\n",
-    file_get_contents('composite_4250k_CENC_CTR_FHD_SDR_3c3b6f55-093e-4c84-8a81-24a784e895d1_8a6e127c-46ab-4ac4-b3ec-2cc765db8a8d.m3u8')
-);
+printf("File will be saved as '%s'. Key data is %s.\n", $saveAs, $keyData);
 
-$enc->setAesKeys(
-    'df2eac0ce6f7f886e397cf03358d970d',
-    '318e658a3fa2461ebf96bb7f2d5d21d9'
-);
-
-$enc->setCipher('aes-128-ctr');
+foreach ($cleanFirst as $file) {
+    if (file_exists($file)) {
+        printf("Cleanup: %s\n", $file);
+        unlink($file);
+    }
+}
 
 $count = 0;
 $map = '';
+$segmentCount = 0;
+foreach ($content as $row) {
+    if (!preg_match('/^#/', $row)) {
+        $segmentCount++;
+    }
+}
+$segmentCalc = str_pad($segmentCount, 6, '0', STR_PAD_LEFT);
 foreach ($content as $row) {
     if (preg_match('/^#/', $row) && preg_match('/MAP:URI/i', $row)) {
         $map = preg_replace('/(.*?)\"(.*?)\"(.*?)$/', '$2', $row);
         $getFrom = sprintf('%s/%s', $basePath, $map);
         $mapData = $nw->request($getFrom, null, requestMethod::METHOD_GET, dataType::NORMAL)->getBody();
+        echo "Fetched new mapdata...\n";
     }
     if (!preg_match('/^#/', $row)) {
         $count++;
@@ -41,33 +80,30 @@ foreach ($content as $row) {
         $getFromData = explode('/', $getFrom);
         $file = $getFromData[count($getFromData) - 1];
         $saveTo = str_pad($count, 6, '0', STR_PAD_LEFT);
-        printf("%s: %s\n", $saveTo, $file);
-        $mp4 = $nw->request($getFrom, null, requestMethod::METHOD_GET, dataType::NORMAL)->getBody();
-        $data = $enc->aesDecrypt($mp4, false);
-        $currentName = sprintf('%s/%s', 'mp4', $file);
-        // Not decrypted.
-        //file_put_contents($currentName, $mp4);
-        // Decrypted
-        file_put_contents($currentName, $mapData . $data);
-
-        // Saving parts as they arrive.
-        //file_put_contents(sprintf('%s/%s.mp4', 'mp4', $saveTo), $mp4);
-        // Merging parts as they arrive.
-        //file_put_contents('mp4/merge.mp4', $data, FILE_APPEND);
-
-        // Saving parts with proper names.
-        /*
-        $exec = sprintf(
-            '%s --key %s:%s %s %s.out',
-            '/home/thorne/viktigt/Dropbox/mkv/mp4dec/bin/mp4decrypt',
-            '318e658a3fa2461ebf96bb7f2d5d21d9',
-            'df2eac0ce6f7f886e397cf03358d970d',
-            $currentName,
-            $currentName
-        );
-        echo $exec . "\n";
-        system($exec);*/
+        printf("%s/%s: %s ...\n", $saveTo, $segmentCalc, $file);
+        $mp4Content = $nw->request($getFrom, null, requestMethod::METHOD_GET, dataType::NORMAL)->getBody();
+        file_put_contents("encoded.mp4", $mapData . $mp4Content, FILE_APPEND);
+        $mapData = '';
     }
 }
 
-//print_r($basePath);
+$decodeApplication = sprintf("%s encoded.mp4 decoded.mp4 %s", $mpDecryptBinary, trim($keyData));
+echo $decodeApplication . "\n";
+system($decodeApplication);
+
+$resultFile = sprintf('%s.mp4', $saveAs);
+if (file_exists($resultFile)) {
+    // Prepare to write a new.
+    unlink($resultFile);
+}
+//$repairApplication = sprintf("%s -err_detect ignore_err -vcodec mpeg4 -i decoded.mp4 -c copy %s.mp4", $ffmpeg, $saveAs, $resultFile);
+$repairApplication = sprintf("%s -i decoded.mp4 -c copy %s.mp4", $ffmpeg, $saveAs, $resultFile);
+echo $repairApplication . "\n";
+system($repairApplication);
+
+foreach (['encoded.mp4', 'decoded.mp4'] as $file) {
+    if (file_exists($file)) {
+        printf("Cleanup: %s\n", $file);
+        unlink($file);
+    }
+}
