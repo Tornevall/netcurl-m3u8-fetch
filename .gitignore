@@ -1,6 +1,8 @@
-.idea
-mp4
-vendor
 **.m3u8
+**.mp4
+.idea
 composer.lock
+mp4
 remove
+vendor
+
