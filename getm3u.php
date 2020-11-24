@@ -5,17 +5,20 @@ use TorneLIB\Model\Type\dataType;
 use TorneLIB\Model\Type\requestMethod;
 use TorneLIB\Module\Network\NetWrapper;
 
-$mpDecryptBinary = '/usr/local/mp4decrypt/bin/mp4decrypt';
-$ffmpeg = '/usr/bin/ffmpeg';
-
-require_once(__DIR__ . '/vendor/autoload.php');
-$nw = new NetWrapper();
+// ./getm3u.php https://manifest.m3u8 KID:IV
 if (!isset($argv[2])) {
     printf("Usage: %s <m3u8-manifest-or-url> <encryptionKID>:<encryptionIV>\n", $argv[0]);
     die;
 }
+
+$mpDecryptBinary = '/usr/local/mp4decrypt/bin/mp4decrypt';
+$ffmpeg = '/usr/bin/ffmpeg';
 $manifest = $argv[1];
 $key = $argv[2];
+$extra = isset($argv[3]) ? $argv[3] : null;
+
+require_once(__DIR__ . '/vendor/autoload.php');
+$nw = new NetWrapper();
 $keyData = sprintf('--key %s', $key);
 if (preg_match('/^http/i', $manifest)) {
     $uData = explode("/", $manifest);
@@ -31,17 +34,6 @@ if (preg_match('/^http/i', $manifest)) {
         file_get_contents($manifest)
     );
 }
-
-/*$keyData = sprintf('--key 1:%s', $key);
-$moreKeys = explode(":", $key);
-if (count($moreKeys)) {
-    $keyCount = 0;
-    $keyData = '';
-    foreach ($moreKeys as $key) {
-        $keyCount++;
-        $keyData .= sprintf('--key %s:%s ', $keyCount, $key);
-    }
-}*/
 
 $cleanFirst = [
     sprintf('%s.mp4', $saveAs),
@@ -96,14 +88,16 @@ if (file_exists($resultFile)) {
     // Prepare to write a new.
     unlink($resultFile);
 }
-//$repairApplication = sprintf("%s -err_detect ignore_err -vcodec mpeg4 -i decoded.mp4 -c copy %s.mp4", $ffmpeg, $saveAs, $resultFile);
 $repairApplication = sprintf("%s -i decoded.mp4 -c copy %s.mp4", $ffmpeg, $saveAs, $resultFile);
 echo $repairApplication . "\n";
 system($repairApplication);
 
-foreach (['encoded.mp4', 'decoded.mp4'] as $file) {
-    if (file_exists($file)) {
-        printf("Cleanup: %s\n", $file);
-        unlink($file);
+// Clean up and keep only final on demand.
+if ($extra !== '--keep') {
+    foreach (['encoded.mp4', 'decoded.mp4'] as $file) {
+        if (file_exists($file)) {
+            printf("Cleanup: %s\n", $file);
+            unlink($file);
+        }
     }
 }
