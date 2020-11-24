@@ -1,25 +1,95 @@
 #!/usr/bin/php
 <?php
 
-use TorneLIB\Model\Type\dataType;
-use TorneLIB\Model\Type\requestMethod;
-use TorneLIB\Module\Network\NetWrapper;
+use TorneLIB\Module\Network\Wrappers\CurlWrapper;
+
+$mpDecryptBinary = '/usr/local/mp4decrypt/bin/mp4decrypt';
+$ffmpeg = '/usr/bin/ffmpeg';
+$manifest = isset($argv[1]) ? $argv[1] : null;
+$key = isset($argv[2]) ? $argv[2] : null;
+$extra = isset($argv[3]) ? $argv[3] : null;
+
+/**
+ * Scan for files to handle.
+ * @param false $cleanUp
+ * @param false $decode
+ */
+function scanFiles($cleanUp = false, $decode = false)
+{
+    global $keyData;
+    $filelist = scandir(__DIR__);
+    $decoded = [];
+    $encoded = [];
+    $finals = [];
+    foreach ($filelist as $file) {
+        if (preg_match('/mp4$/', $file)) {
+            if (preg_match('/decode/i', $file)) {
+                $decoded[] = $file;
+            }
+            if (preg_match('/encode/i', $file)) {
+                $encoded[] = $file;
+            }
+            if (preg_match('/final/i', $file)) {
+                $finals[] = $file;
+            }
+        }
+    }
+    if ($cleanUp) {
+        $cleanArray = array_merge($decoded, $encoded, $finals);
+        foreach ($cleanArray as $file) {
+            echo "Clean up: $file\n";
+            unlink($file);
+        }
+    }
+    if ($decode) {
+        foreach ($encoded as $file) {
+            $decodeThis = preg_replace('/.mp4$/', '', $file) . ".mp4";
+            $decodeAs = preg_replace('/encoded/', 'decoded', $decodeThis);
+            $finalize = preg_replace('/decoded/', 'final', $decodeAs);
+            printf("Decode %s as %s ...\n", $decodeThis, $decodeAs);
+            decryptFile($decodeThis, $decodeAs, $finalize);
+        }
+    }
+}
+
+/**
+ * mp4decrypt + finalize with ffmpeg.
+ * @param $encodedFile
+ * @param $decodedFile
+ * @param $finalize
+ */
+function decryptFile($encodedFile, $decodedFile, $finalize)
+{
+    global $mpDecryptBinary, $keyData, $ffmpeg;
+    $decodeApplication = sprintf("%s %s %s %s", $mpDecryptBinary, trim($keyData), $encodedFile, $decodedFile);
+    echo $decodeApplication . "\n";
+    system($decodeApplication);
+
+    $repairApplication = sprintf("%s -i %s %s", $ffmpeg, $decodedFile, $finalize);
+    echo $repairApplication . "\n";
+    system($repairApplication);
+}
 
 // ./getm3u.php https://manifest.m3u8 KID:IV
-if (!isset($argv[2])) {
+if (empty($key)) {
     printf("Usage: %s <m3u8-manifest-or-url> <encryptionKID>:<encryptionIV>\n", $argv[0]);
     die;
 }
 
-$mpDecryptBinary = '/usr/local/mp4decrypt/bin/mp4decrypt';
-$ffmpeg = '/usr/bin/ffmpeg';
-$manifest = $argv[1];
-$key = $argv[2];
-$extra = isset($argv[3]) ? $argv[3] : null;
+scanFiles(true);
 
 require_once(__DIR__ . '/vendor/autoload.php');
-$nw = new NetWrapper();
+$nw = new CurlWrapper();
+$keyArray = explode(':', $key);
 $keyData = sprintf('--key %s', $key);
+$splitKey = false;
+if ($splitKey && is_array($keyArray)) {
+    $keyData = '';
+    foreach ($keyArray as $keyCount => $key) {
+        $keyData .= sprintf('--key %d:%s ', ($keyCount + 1), $key);
+    }
+}
+
 if (preg_match('/^http/i', $manifest)) {
     $uData = explode("/", $manifest);
     $uData = array_reverse($uData);
@@ -35,20 +105,7 @@ if (preg_match('/^http/i', $manifest)) {
     );
 }
 
-$cleanFirst = [
-    sprintf('%s.mp4', $saveAs),
-    'decoded.mp4',
-    'encoded.mp4',
-];
-
-printf("File will be saved as '%s'. Key data is %s.\n", $saveAs, $keyData);
-
-foreach ($cleanFirst as $file) {
-    if (file_exists($file)) {
-        printf("Cleanup: %s\n", $file);
-        unlink($file);
-    }
-}
+printf("File will be saved as '%s'. Key data is %s.\n", $saveAs, trim($keyData));
 
 $count = 0;
 $map = '';
@@ -59,45 +116,40 @@ foreach ($content as $row) {
     }
 }
 $segmentCalc = str_pad($segmentCount, 6, '0', STR_PAD_LEFT);
+$hasDisco = false;
+
+$useEnc = "encoded0.mp4";
+$part = 0;
 foreach ($content as $row) {
     if (preg_match('/^#/', $row) && preg_match('/MAP:URI/i', $row)) {
         $map = preg_replace('/(.*?)\"(.*?)\"(.*?)$/', '$2', $row);
         $getFrom = sprintf('%s/%s', $basePath, $map);
-        $mapData = $nw->request($getFrom, null, requestMethod::METHOD_GET, dataType::NORMAL)->getBody();
+        $mapData = $nw->request($getFrom)->getBody();
         echo "Fetched new mapdata...\n";
-    }
-    if (!preg_match('/^#/', $row)) {
+        file_put_contents($useEnc, $mapData, FILE_APPEND | FILE_BINARY);
+
+        // Alternative.
+        //system(sprintf("curl -sS %s >>encoded.mp4", $getFrom));
+    } elseif (preg_match('/DISCONTINUITY/', $row) && !$hasDisco) {
+        $hasDisco = true;
+        $part++;
+        echo "==== NEXT STREAM START ====\n";
+        $useEnc = sprintf('encoded%d.mp4', $part);
+    } elseif (!preg_match('/^#/', $row)) {
         $count++;
         $getFrom = sprintf('%s/%s', $basePath, $row);
         $getFromData = explode('/', $getFrom);
         $file = $getFromData[count($getFromData) - 1];
         $saveTo = str_pad($count, 6, '0', STR_PAD_LEFT);
-        printf("%s/%s: %s ...\n", $saveTo, $segmentCalc, $file);
-        $mp4Content = $nw->request($getFrom, null, requestMethod::METHOD_GET, dataType::NORMAL)->getBody();
-        file_put_contents("encoded.mp4", $mapData . $mp4Content, FILE_APPEND);
-        $mapData = '';
+        printf("%s/%s: %s (%s)...\n", $saveTo, $segmentCalc, $file, $useEnc);
+        $mp4Content = $nw->request($getFrom)->getBody();
+        file_put_contents($useEnc, $mp4Content, FILE_APPEND | FILE_BINARY);
+        // Apply mapdata only once per found map-segment.
+        $mapData = null;
+
+        // Alternative.
+        //system(sprintf("curl -sS %s >>encoded.mp4", $getFrom));
     }
 }
 
-$decodeApplication = sprintf("%s encoded.mp4 decoded.mp4 %s", $mpDecryptBinary, trim($keyData));
-echo $decodeApplication . "\n";
-system($decodeApplication);
-
-$resultFile = sprintf('%s.mp4', $saveAs);
-if (file_exists($resultFile)) {
-    // Prepare to write a new.
-    unlink($resultFile);
-}
-$repairApplication = sprintf("%s -i decoded.mp4 -c copy %s.mp4", $ffmpeg, $saveAs, $resultFile);
-echo $repairApplication . "\n";
-system($repairApplication);
-
-// Clean up and keep only final on demand.
-if ($extra === '--clean') {
-    foreach (['encoded.mp4', 'decoded.mp4'] as $file) {
-        if (file_exists($file)) {
-            printf("Cleanup: %s\n", $file);
-            unlink($file);
-        }
-    }
-}
+scanFiles(false, true);
