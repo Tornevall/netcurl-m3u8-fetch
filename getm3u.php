@@ -93,7 +93,7 @@ echo $repairApplication . "\n";
 system($repairApplication);
 
 // Clean up and keep only final on demand.
-if ($extra !== '--keep') {
+if ($extra === '--clean') {
     foreach (['encoded.mp4', 'decoded.mp4'] as $file) {
         if (file_exists($file)) {
             printf("Cleanup: %s\n", $file);
