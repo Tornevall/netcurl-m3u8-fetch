@@ -1,5 +1,6 @@
 #!/usr/bin/php
 <?php
+// ffmpeg -f concat -i concat.txt -c:v copy merged.mp4
 
 use TorneLIB\Module\Network\Wrappers\CurlWrapper;
 

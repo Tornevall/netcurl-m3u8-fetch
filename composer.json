@@ -2,5 +2,10 @@
     "require": {
         "tornevall/tornelib-php-netcurl": "^6.1",
         "tornevall/tornelib-php-io": "^6.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "M3U8\\": "src/"
+        }
     }
 }
