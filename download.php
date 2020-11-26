@@ -15,12 +15,15 @@ if (!isset($argv[3])) {
 
 $generalStoreDestination = __DIR__ . '/tmp';
 
-$downloader = new Download();
-$downloader
-    ->setVideoManifest($argv[1])
-    ->setAudioManifest($argv[2])
-    ->setStoreDestination($generalStoreDestination)
-    ->exec();
+// Skip download again with arg4.
+if (!isset($argv[4])) {
+    $downloader = new Download();
+    $downloader
+        ->setVideoManifest($argv[1])
+        ->setAudioManifest($argv[2])
+        ->setStoreDestination($generalStoreDestination)
+        ->exec();
+}
 
 $fileHandler = new FileHandler();
 $fileHandler
