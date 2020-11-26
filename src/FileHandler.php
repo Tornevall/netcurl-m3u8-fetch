@@ -99,7 +99,7 @@ class FileHandler
     public function exec()
     {
         $this->getFileList();
-        //$this->getDecrypted();
+        $this->getDecrypted();
         $this->setConcatenatedData();
 
         return $this;

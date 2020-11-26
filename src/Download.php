@@ -191,8 +191,8 @@ class Download
         );
         $part = 1;
         foreach ($manifestContent as $row) {
-            $partNum = str_pad($part, 6, '0', STR_PAD_LEFT);
-            $destinationName = sprintf('%s%d.mp4', $destination, $partNum);
+            $partNum = str_pad($part, 2, '0', STR_PAD_LEFT);
+            $destinationName = sprintf('%s%s.mp4', $destination, $partNum);
 
             switch ($row) {
                 case preg_match('/^#/', $row) && preg_match('/MAP:URI/i', $row):
