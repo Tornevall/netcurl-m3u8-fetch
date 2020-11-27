@@ -180,6 +180,7 @@ class Download
     /**
      * @param $manifestContent
      * @param $typeName
+     * @param $basePath
      * @throws ExceptionHandler
      */
     private function getMergedSegments($manifestContent, $typeName, $basePath)
@@ -225,13 +226,17 @@ class Download
      * @param $mapDataString
      * @param $basePath
      * @return mixed
-     * @throws ExceptionHandler
      */
     private function getMapData($mapDataString, $basePath)
     {
         $map = preg_replace('/(.*?)\"(.*?)\"(.*?)$/', '$2', $mapDataString);
         $getFrom = sprintf('%s/%s', $basePath, $map);
-        $mapData = $this->wrapper->request($getFrom)->getBody();
+        $mapData = '';
+        try {
+            $mapData = $this->wrapper->request($getFrom)->getBody();
+        } catch (ExceptionHandler $e) {
+            printf("%s (%d): %s\n", $e->getMessage(), $e->getCode(), $getFrom);
+        }
         return $mapData;
     }
 
