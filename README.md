@@ -1,13 +1,13 @@
 # The library
 
 The library used can be found at [http://netcurl.org](http://netcurl.org). The documentation of the
-netcurl project can be furthermore be found at [https://docs.tornevall.net/display/TORNEVALL/NETCURLv6.1](https://docs.tornevall.net).
+netcurl project can be furthermore be found at [docs.tornevall.net](https://docs.tornevall.net/display/TORNEVALL/NETCURLv6.1).
 
 # netcurl-download
 
 This is a very simple way of just downloading data top down from a file. However, some manifests includes
 multiple content, which forces us to put and merge files into multiple content. This is a backside when
-you for example using a playlist based on the [https://en.wikipedia.org/wiki/M3U](m3u) format. Many years from
+you for example using a playlist based on the [m3u](https://en.wikipedia.org/wiki/M3U) format. Many years from
 now, m3u playlists was written as a local playlist for mp3 files. But for m3u8 files it has been a common way
 to stream multiple files, for example movies - as the wikipedia also states.
 
