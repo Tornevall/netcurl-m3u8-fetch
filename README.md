@@ -8,11 +8,14 @@ to stream multiple files, for example movies - as the wikipedia also states.
 
 The project is used as an educational example of how to simplify manual downloads of a playlist.
 It has been created after several discussions on various forums where suggestions are either splitted up
-on multiple threads, or not available at all. The idea of this project came up when I realized that I have
-my own library that actually handles network communication and uses best available network driver to solve
-the problem. 
+on multiple discussion threads, or examples are  not available at all. The idea of this project came up
+when I realized that I have my own library that actually handles network communication and uses best
+available network driver to solve the problem. There are no data protection circumventions in this project.
 
-Note - There are no data protection circumventions in this project.
+The project example is in a single part based on the m3u format, *if* content based on m3u in the playlist
+are are discovered (the DISCONTINUITY field that separates more file segments). However, it is used to
+show how the netcurl library works, where you don't have to think about setting up the driver yourself, at all.
+
 
 ## The first idea
 
