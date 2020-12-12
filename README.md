@@ -42,3 +42,15 @@ is also an example present, on how the netcurl library is used as a downloader c
 use the curl wrapper or the auto selective wrapper. In this example, the auto selective wrapper is chosen
 since curl may not be the standard library on a system (note: if curl is not present, the driver will fall back
 on the streams wrapper in PHP and use a binary safe method to download).
+
+## Testing with the bundled files
+
+You should take a look at the download.php file in the root path to see how it is built, build it yourself with
+your only bare hands - by calling the Wrappers, or do something like this:
+
+    <?php
+    require_once(__DIR__ . '/vendor/autoload.php');
+    $download = new Playlist\Download();
+    $download->setStoreDestination(__DIR__ . '/tmp');
+    $download->setManifest('URL-to-playlist');
+    $download->exec();
