@@ -1,3 +1,8 @@
+# The library
+
+The library used can be found at [http://netcurl.org/](tornelib-php-netcurl - bitbucket). The documentation of the
+netcurl project can be furthermore be found at [https://docs.tornevall.net/display/TORNEVALL/NETCURLv6.1](docs.tornevall.net).
+
 # netcurl-download
 
 This is a very simple way of just downloading data top down from a file. However, some manifests includes
@@ -45,8 +50,10 @@ on the streams wrapper in PHP and use a binary safe method to download).
 
 ## Testing with the bundled files
 
-You should take a look at the download.php file in the root path to see how it is built, build it yourself with
-your only bare hands - by calling the Wrappers, or do something like this:
+You should start with the download.php file in the root path and follow the method calls, to see how it is built.
+I call this "reverse engineering". You are however not alone. Netcurl comes with a documentation at
+[https://docs.tornevall.net/display/TORNEVALL/NETCURLv6.1](docs.tornevall.net). You could also build, and adapt it for
+your own needs, by yourself with your only bare hands as a tool - by calling the Wrappers, or do something like this:
 
     <?php
     require_once(__DIR__ . '/vendor/autoload.php');
