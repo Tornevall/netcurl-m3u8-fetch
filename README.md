@@ -1,7 +1,7 @@
 # The library
 
 The library used can be found at [http://netcurl.org](http://netcurl.org). The documentation of the
-netcurl project can be furthermore be found at [https://docs.tornevall.net/display/TORNEVALL/NETCURLv6.1](docs.tornevall.net).
+netcurl project can be furthermore be found at [https://docs.tornevall.net/display/TORNEVALL/NETCURLv6.1](https://docs.tornevall.net).
 
 # netcurl-download
 
