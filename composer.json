@@ -1,0 +1,10 @@
+{
+    "require": {
+        "tornevall/tornelib-php-netcurl": "^6.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Playlist\\": "src/"
+        }
+    }
+}
