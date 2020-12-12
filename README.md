@@ -2,6 +2,8 @@
 
 The library used can be found at [http://netcurl.org](http://netcurl.org). The documentation of the
 netcurl project can be furthermore be found at [docs.tornevall.net](https://docs.tornevall.net/display/TORNEVALL/NETCURLv6.1).
+Note: When using composer, the actual project lies within github [here](https://github.com/Tornevall/tornelib-php-netcurl)
+to maintain stability and reachability for deployers.
 
 # netcurl-download
 
