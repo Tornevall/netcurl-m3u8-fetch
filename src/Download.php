@@ -69,6 +69,7 @@ class Download
     public function __construct()
     {
         $this->wrapper = new CurlWrapper();
+        $this->wrapper->setTimeout(30);
         $config = new WrapperConfig();
         $config->setUserAgent($this->browser1080);
         $this->wrapper->setConfig($config);
@@ -211,11 +212,15 @@ class Download
                     break;
                 default:
                     printf("Merge %s.\n", $row);
-                    file_put_contents(
-                        $destinationName,
-                        $this->getContentData($row, $basePath),
-                        FILE_APPEND | FILE_BINARY
-                    );
+                    try {
+                        file_put_contents(
+                            $destinationName,
+                            $this->getContentData($row, $basePath),
+                            FILE_APPEND | FILE_BINARY
+                        );
+                    } catch (ExceptionHandler $e) {
+                        printf("Skipped segment due to error %d: %s\n", $e->getCode(), $e->getMessage());
+                    }
                     break;
             }
         }

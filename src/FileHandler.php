@@ -311,6 +311,7 @@ class FileHandler
                 );
             }
         }
+
         return $this;
     }
 

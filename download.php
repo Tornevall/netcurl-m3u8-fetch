@@ -11,8 +11,9 @@ if ((isset($argv[1]) && $argv[1] === 'merge') || isset($argv[4])) {
     $mergeOnly = true;
 }
 
-if (!isset($argv[3])) {
+if (!isset($argv[3]) && !$mergeOnly) {
     printf("Usage: %s <video-playlist-url> <audio-playlist-url> <KID:IV>\n", $argv[0]);
+    printf("Usage: %s merge (= retry merging when the first download failed).\n", $argv[0]);
     echo "KID:IV = Widevine decoded AES key (kidhash:ivhash).\n";
     echo "\n";
     exit;
@@ -27,6 +28,7 @@ if (!$mergeOnly) {
         ->setAudioManifest($argv[2])
         ->setStoreDestination($generalStoreDestination)
         ->exec();
+    sleep(2);
 }
 
 $fileHandler = new FileHandler();
