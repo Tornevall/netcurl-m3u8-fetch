@@ -66,6 +66,17 @@ class FileHandler
     private $finalRenameName;
 
     /**
+     * FileHandler constructor.
+     */
+    public function __construct()
+    {
+        if (file_exists(__DIR__ . '/../mp4decrypt/bin/mp4decrypt')) {
+            // Using local instead of remote-
+            $this->setDecryptBinary(__DIR__ . '/../mp4decrypt/bin/mp4decrypt');
+        }
+    }
+
+    /**
      * Set new binary for mp4decrypt.
      * @param $binaryFile
      * @return FileHandler
