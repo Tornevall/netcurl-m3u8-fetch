@@ -2,6 +2,8 @@
 
 namespace M3U8;
 
+use Exception;
+
 class FileHandler
 {
     /**
@@ -42,10 +44,26 @@ class FileHandler
      * @var string
      */
     private $mergeVideoName = '';
+
     /**
      * @var string
      */
     private $mergeAudioName = '';
+
+    /**
+     * @var string
+     */
+    private $outputName;
+
+    /**
+     * @var string
+     */
+    private $finalVideoName;
+
+    /**
+     * @var string
+     */
+    private $finalRenameName;
 
     /**
      * Set new binary for mp4decrypt.
@@ -84,6 +102,14 @@ class FileHandler
     }
 
     /**
+     * @return mixed
+     */
+    public function getWideVineKeys()
+    {
+        return $this->wideVineKeys;
+    }
+
+    /**
      * @param $destination
      * @return FileHandler
      */
@@ -99,9 +125,10 @@ class FileHandler
     public function exec()
     {
         $this->getFileList();
-        $this->getDecrypted();
+        if ($this->getWideVineKeys()) {
+            $this->getDecrypted();
+        }
         $this->setConcatenatedData();
-
         return $this;
     }
 
@@ -136,18 +163,29 @@ class FileHandler
      */
     private function setConcatenatedData()
     {
-        $this->concatVideoFile = $this->getFullFileName('concat_video.txt');
         $this->concatAudioFile = $this->getFullFileName('concat_audio.txt');
+        $this->concatVideoFile = $this->getFullFileName('concat_video.txt');
         $this->mergeVideoName = $this->getFullFileName('merge.mp4');
         $this->mergeAudioName = $this->getFullFileName('merge.m4a');
+        $this->finalVideoName = $this->getFullFileName('merged_video.mp4');
         $this->cleanConcatFiles();
 
-        $this->setConcatFile($this->files['video'], $this->concatVideoFile);
+        // Rescan files.
+        $this->getFileList();
         $this->setConcatFile($this->files['audio'], $this->concatAudioFile);
-        $this->ffConcatenate($this->concatVideoFile, $this->mergeVideoName, 'video');
+        $this->setConcatFile($this->files['video'], $this->concatVideoFile);
         $this->ffConcatenate($this->concatAudioFile, $this->mergeAudioName, 'audio');
+        $this->ffConcatenate($this->concatVideoFile, $this->mergeVideoName, 'video');
 
         $this->ffMerge($this->mergeVideoName, $this->mergeAudioName);
+
+        if (!empty($this->outputName) && file_exists($this->finalVideoName)) {
+            $this->finalRenameName = $this->getFullFileName($this->outputName);
+            $this->cleanConcatFiles();
+            $this->cleanFiles($this->files['audio']);
+            $this->cleanFiles($this->files['video']);
+            rename($this->finalVideoName, $this->finalRenameName);
+        }
 
         return $this;
     }
@@ -254,6 +292,17 @@ class FileHandler
     }
 
     /**
+     * @param $outputName
+     * @return FileHandler
+     */
+    public function setOutPutName($outputName)
+    {
+        $this->outputName = $outputName;
+
+        return $this;
+    }
+
+    /**
      * @param $concatVideoFile
      * @param $concatAudioFile
      * @return $this
@@ -262,7 +311,6 @@ class FileHandler
     {
         $mergedVideoName = $this->getFullFileName('merged_video.mp4');
         $this->cleanFiles([$mergedVideoName]);
-
         if (file_exists($concatVideoFile) && file_exists($concatAudioFile)) {
             $this->ffExec(
                 sprintf(
@@ -273,6 +321,8 @@ class FileHandler
                 )
             );
         }
+
+
         return $this;
     }
 
@@ -294,6 +344,11 @@ class FileHandler
      */
     private function getDecrypted()
     {
+        if (!$this->wideVineKeys) {
+            echo "Keys not included in this session. Ignoring\n";
+            return $this;
+        }
+
         foreach ($this->files['video'] as $file) {
             $getName = basename($file);
             if ((bool)preg_match('/^enc/i', $getName)) {
@@ -330,7 +385,12 @@ class FileHandler
             $destinationVideoFile
         );
 
-        exec($decodeApplication, $output, $return);
+        try {
+            //exec($decodeApplication, $output, $return);
+            system($decodeApplication, $return);
+        } catch (Exception $e) {
+            // Ignore errors.
+        }
 
         return $return;
     }

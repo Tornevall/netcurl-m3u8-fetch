@@ -6,10 +6,13 @@ use M3U8\FileHandler;
 
 require_once(__DIR__ . '/vendor/autoload.php');
 
+$outputName = isset($argv[4]) ? $argv[4] : '';
 $mergeOnly = false;
-if ((isset($argv[1]) && $argv[1] === 'merge') || isset($argv[4])) {
+if ((isset($argv[1]) && $argv[1] === 'merge')) {
     $mergeOnly = true;
+    $outputName = isset($argv[2]) ? $argv[2] : '';
 }
+$keys = isset($argv[3]) ? $argv[3] : '';
 
 if (!isset($argv[3]) && !$mergeOnly) {
     printf("Usage: %s <video-playlist-url> <audio-playlist-url> <KID:IV>\n", $argv[0]);
@@ -32,7 +35,12 @@ if (!$mergeOnly) {
 }
 
 $fileHandler = new FileHandler();
-$fileHandler
-    ->setStoreDestination($generalStoreDestination)
-    ->setWideVineKeys($argv[3])
-    ->exec();
+$fileHandler->setStoreDestination($generalStoreDestination);
+$fileHandler->setOutPutName($outputName);
+
+if ($mergeOnly) {
+    $fileHandler->exec();
+} else {
+    $fileHandler->setWideVineKeys($keys);
+    $fileHandler->exec();
+}

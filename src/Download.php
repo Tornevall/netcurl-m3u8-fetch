@@ -182,7 +182,6 @@ class Download
      * @param $manifestContent
      * @param $typeName
      * @param $basePath
-     * @throws ExceptionHandler
      */
     private function getMergedSegments($manifestContent, $typeName, $basePath)
     {
