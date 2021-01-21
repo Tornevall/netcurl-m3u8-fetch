@@ -407,6 +407,9 @@ class M3U8_Disney
             $stripVTT = trim(preg_replace('/WEBVTT$/', '', $stripVTT));
             $content = explode("\n", $stripVTT);
             $output = '';
+            if (count($content) <= 1) {
+                return "";
+            }
             foreach ($content as $row) {
                 $pattern1 = '#(\d{2}):(\d{2}):(\d{2})\.(\d{3})#'; // '00:00:00.000'
                 $pattern2 = '#(\d{2}):(\d{2})\.(\d{3})#'; // '00:00.000'
@@ -443,7 +446,7 @@ class M3U8_Disney
                     continue;
                 }
             }
-            $return = $output;
+            $return = $output . PHP_EOL;
         }
 
         return $return;
