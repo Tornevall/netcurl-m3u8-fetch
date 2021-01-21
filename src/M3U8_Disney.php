@@ -424,13 +424,15 @@ class M3U8_Disney
                         $output .= $this->subTitleRow;
                         $output .= PHP_EOL;
                         $row = preg_replace($pattern2, '00:$1:$2,$3', $row);
+                    } else {
+                        $row = $rowState . $row;
                     }
                     $rowState = '';
                 }
-                $output .= $rowState . $row . PHP_EOL;
+                $output .= $row . PHP_EOL;
 
                 if (empty($row)) {
-                    $output .= "\n";
+                    //$output .= "\n";
                     continue;
                 }
             }
