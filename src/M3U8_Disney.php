@@ -2,11 +2,12 @@
 
 namespace M3U8;
 
+use Exception;
 use TorneLIB\Exception\ExceptionHandler;
 use TorneLIB\Module\Config\WrapperConfig;
 use TorneLIB\Module\Network\Wrappers\CurlWrapper;
 
-class Download
+class M3U8_Disney
 {
     private $wrapper;
 
@@ -49,6 +50,11 @@ class Download
     private $audioManifestContent = [];
 
     /**
+     * @var array List of urls with subtitles.
+     */
+    private $subtitleManifest = [];
+
+    /**
      * @var string Storage for mp4/m4a data.
      */
     private $storeDestination = __DIR__ . '/tmp';
@@ -62,12 +68,30 @@ class Download
      * @var string Root content url (for m3u8 without full urls) - video.
      */
     private $videoBaseUrl;
+    /**
+     * @var string
+     */
+    private $subtitleManifestContent = '';
+    /**
+     * @var string
+     */
+    private $subtitleBaseUrl;
+    /**
+     * @var string
+     */
+    private $storeExtension;
+    /**
+     * @var bool
+     */
+    private $hasByteOrder = false;
+    private $subTitleRow = 1;
 
     /**
      * Download constructor.
      */
     public function __construct()
     {
+        $this->subTitleRow = 0;
         $this->wrapper = new CurlWrapper();
         $this->wrapper->setTimeout(30);
         $config = new WrapperConfig();
@@ -117,6 +141,17 @@ class Download
             echo "=== AUDIO SEGMENT REQUEST ===\n";
             $this->getMergedSegments($this->audioManifestContent, 'audio', $this->audioBaseUrl);
         }
+        if (!empty($this->subtitleManifest)) {
+            foreach ($this->subtitleManifest as $manifestLanguage => $manifestUrl) {
+                $this->subtitleBaseUrl = $this->getBaseUrl($manifestUrl);
+                $this->subtitleManifestContent = $this->getPlaylistManifest($manifestUrl);
+                $this->getMergedSegments(
+                    $this->subtitleManifestContent,
+                    sprintf('sub_%s', $manifestLanguage),
+                    $this->subtitleBaseUrl
+                );
+            }
+        }
 
         return $this;
     }
@@ -128,7 +163,7 @@ class Download
     {
         $filelist = scandir($this->storeDestination);
         foreach ($filelist as $file) {
-            if (preg_match('/.mp/', $file)) {
+            if (preg_match('/.mp|.vtt|.srt/', $file)) {
                 printf("Unlink %s.\n", $file);
                 unlink(
                     sprintf('%s/%s', $this->storeDestination, $file)
@@ -190,10 +225,17 @@ class Download
             preg_replace('/\/$/', '/', $this->storeDestination),
             $typeName
         );
+
+        $this->storeExtension = $this->getExtension($typeName);
+
         $part = 1;
         foreach ($manifestContent as $row) {
             $partNum = str_pad($part, 2, '0', STR_PAD_LEFT);
-            $destinationName = sprintf('%s%s.mp4', $destination, $partNum);
+            if ($this->isSubtitle()) {
+                $part = 0;
+                $partNum = null;
+            }
+            $destinationName = sprintf('%s%s.%s', $destination, $partNum, $this->storeExtension);
 
             switch ($row) {
                 case preg_match('/^#/', $row) && preg_match('/MAP:URI/i', $row):
@@ -210,19 +252,68 @@ class Download
                 case (bool)preg_match('/^#/', $row):
                     break;
                 default:
+                    if (preg_match('/DUB(.*?)vtt$/', $row)) {
+                        continue;
+                    }
+
                     printf("Merge %s.\n", $row);
                     try {
-                        file_put_contents(
-                            $destinationName,
-                            $this->getContentData($row, $basePath),
-                            FILE_APPEND | FILE_BINARY
-                        );
+                        $this->setContentData($destinationName, $row, $basePath);
                     } catch (ExceptionHandler $e) {
                         printf("Skipped segment due to error %d: %s\n", $e->getCode(), $e->getMessage());
                     }
                     break;
             }
         }
+    }
+
+    /**
+     * @param $typeName
+     * @return string
+     */
+    private function getExtension($typeName = '')
+    {
+        $return = 'mp4';
+
+        foreach ($this->subtitleManifestContent as $row) {
+            if (substr($row, 0, 1) !== '#') {
+                preg_match_all('/\.(.*?)$/', $row, $resultExt);
+                if (isset($resultExt[1], $resultExt[1][0]) && strlen($resultExt[1][0]) > 1) {
+                    $return = $resultExt[1][0];
+                    break;
+                }
+            }
+        }
+
+        if ($return === 'vtt') {
+            $return = 'srt'; // Trying to convert here.
+        }
+
+        /*        if (preg_match('_', $typeName)) {
+                    $typeEx = explode('_', $typeName);
+                    switch ($typeEx[0]) {
+                        case 'sub':
+                            $return = 'srt';
+                            break;
+                        default:
+                            break;
+                    }
+                }*/
+
+        return $return;
+    }
+
+    /**
+     * @return bool
+     */
+    private function isSubtitle()
+    {
+        $return = false;
+        if (in_array($this->storeExtension, ['vtt', 'srt'])) {
+            $return = true;
+        }
+
+        return $return;
     }
 
     /**
@@ -245,6 +336,30 @@ class Download
     }
 
     /**
+     * @param $destinationName
+     * @param $row
+     * @param $basePath
+     * @return M3U8_Disney
+     * @throws ExceptionHandler
+     */
+    private function setContentData($destinationName, $row, $basePath)
+    {
+        $content = $this->getContentData($row, $basePath);
+
+        if ($this->isSubtitle()) {
+            $content = $this->getSrtByteOrder() . $this->getSrt($content);
+        }
+
+        file_put_contents(
+            $destinationName,
+            $content,
+            FILE_APPEND | FILE_BINARY
+        );
+
+        return $this;
+    }
+
+    /**
      * @param $contentUri
      * @param $basePath
      * @return array|mixed
@@ -258,12 +373,113 @@ class Download
     }
 
     /**
+     * Simplified byte order.
+     */
+    private function getSrtByteOrder()
+    {
+        if (!$this->hasByteOrder) {
+            $this->hasByteOrder = true;
+            return chr(hexdec('EF')) .
+                chr(hexdec('BB')) .
+                chr(hexdec('BF'));
+        }
+
+        return null;
+    }
+
+    /**
+     * @param $content
+     * @return mixed
+     */
+    private function getSrt($content)
+    {
+        $return = $content;
+        $rowState = '';
+        if (preg_match('/WEBVTT/', $content)) {
+            $stripVTT = trim(preg_replace('/(.*?)}(.*)/s', '$2', $content));
+            $stripVTT = trim(preg_replace('/WEBVTT$/', '', $stripVTT));
+            $content = explode("\n", $stripVTT);
+            $output = '';
+            foreach ($content as $row) {
+                $pattern1 = '#(\d{2}):(\d{2}):(\d{2})\.(\d{3})#'; // '00:00:00.000'
+                $pattern2 = '#(\d{2}):(\d{2})\.(\d{3})#'; // '00:00.000'
+                $m1 = preg_match($pattern1, $row);
+                if (is_numeric($m1) && $m1 > 0) {
+                    $this->subTitleRow++;
+                    $output .= $this->subTitleRow;
+                    $output .= PHP_EOL;
+                    $row = preg_replace($pattern1, '$1:$2:$3,$4', $row);
+                    $rowEx = explode(' ', $row);
+                    if (isset($rowEx[3])) {
+                        $rowInfo = $rowEx[3];
+                        unset($rowEx[3]);
+                        if (preg_match('/start/i', $rowInfo)) {
+                            $rowState = '{\an8}';
+                        }
+                        $row = implode(' ', $rowEx);
+                    }
+                } else {
+                    $m2 = preg_match($pattern2, $row);
+                    if (is_numeric($m2) && $m2 > 0) {
+                        $output .= $this->subTitleRow;
+                        $output .= PHP_EOL;
+                        $row = preg_replace($pattern2, '00:$1:$2,$3', $row);
+                    }
+                    $rowState = '';
+                }
+                $output .= $rowState . $row . PHP_EOL;
+
+                if (empty($row)) {
+                    $output .= "\n";
+                    continue;
+                }
+            }
+            $return = $output;
+        }
+
+        return $return;
+    }
+
+    /**
      * @param $destination
-     * @return Download
+     * @return M3U8_Disney
      */
     public function setStoreDestination($destination)
     {
         $this->storeDestination = $destination;
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getSubtitleManifest()
+    {
+        return $this->subtitleManifest;
+    }
+
+    /**
+     * @param array $subtitleManifest
+     * @return M3U8_Disney
+     * @throws Exception
+     */
+    public function setSubtitleManifest($subtitleManifest = [])
+    {
+        $this->subtitleManifest = is_string($subtitleManifest) ? (array)$subtitleManifest : $subtitleManifest;
+        $newArray = [];
+
+        foreach ($this->subtitleManifest as $subManifest) {
+            if (!(bool)preg_match('/:http/', $subManifest)) {
+                throw new Exception('Subtitle manifest must be defined with a language like -s<lang>:<url>');
+            }
+            $explodeManifest = explode(':', $subManifest, 2);
+            $newArray[$explodeManifest[0]] = $explodeManifest[1];
+        }
+
+        if (!empty($newArray)) {
+            $this->subtitleManifest = $newArray;
+        }
+
         return $this;
     }
 }
