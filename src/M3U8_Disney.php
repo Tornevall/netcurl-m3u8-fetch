@@ -126,6 +126,20 @@ class M3U8_Disney
     {
         $this->cleanupDestination();
 
+        echo "Checking subtitleManifest (array)...\n";
+        if (!empty($this->subtitleManifest)) {
+            foreach ($this->subtitleManifest as $manifestLanguage => $manifestUrl) {
+                $this->subTitleRow = 0;
+                $this->subtitleBaseUrl = $this->getBaseUrl($manifestUrl);
+                $this->subtitleManifestContent = $this->getPlaylistManifest($manifestUrl);
+                $this->getMergedSegments(
+                    $this->subtitleManifestContent,
+                    sprintf('sub_%s', $manifestLanguage),
+                    $this->subtitleBaseUrl
+                );
+            }
+        }
+
         printf("Checking videoManifest (%s)...\n", $this->videoManifest);
         if (!empty($this->videoManifest)) {
             $this->videoManifestContent = $this->getPlaylistManifest($this->videoManifest);
@@ -142,20 +156,6 @@ class M3U8_Disney
             $this->audioBaseUrl = $this->getBaseUrl($this->audioManifest);
             echo "=== AUDIO SEGMENT REQUEST ===\n";
             $this->getMergedSegments($this->audioManifestContent, 'audio', $this->audioBaseUrl);
-        }
-
-        echo "Checking subtitleManifest (is array)...\n";
-        if (!empty($this->subtitleManifest)) {
-            foreach ($this->subtitleManifest as $manifestLanguage => $manifestUrl) {
-                $this->subTitleRow = 0;
-                $this->subtitleBaseUrl = $this->getBaseUrl($manifestUrl);
-                $this->subtitleManifestContent = $this->getPlaylistManifest($manifestUrl);
-                $this->getMergedSegments(
-                    $this->subtitleManifestContent,
-                    sprintf('sub_%s', $manifestLanguage),
-                    $this->subtitleBaseUrl
-                );
-            }
         }
 
         return $this;
@@ -280,7 +280,7 @@ class M3U8_Disney
     {
         $return = 'mp4';
 
-        foreach ($this->subtitleManifestContent as $row) {
+        foreach ((array)$this->subtitleManifestContent as $row) {
             if (substr($row, 0, 1) !== '#') {
                 preg_match_all('/\.(.*?)$/', $row, $resultExt);
                 if (isset($resultExt[1], $resultExt[1][0]) && strlen($resultExt[1][0]) > 1) {
