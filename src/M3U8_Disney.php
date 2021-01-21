@@ -138,6 +138,8 @@ class M3U8_Disney
                     $this->subtitleBaseUrl
                 );
             }
+            // Clean up the array.
+            $this->subtitleManifestContent = [];
         }
 
         printf("Checking videoManifest (%s)...\n", $this->videoManifest);
