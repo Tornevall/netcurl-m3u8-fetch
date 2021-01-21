@@ -6,7 +6,7 @@ use M3U8\M3U8_Detect;
 
 require_once(__DIR__ . '/vendor/autoload.php');
 
-$argv[1] = '-ssv:https://vod-l3c-eu-north-1.media.dssott.com/ps01/disney/e92289f6-9625-4ea4-8d00-387e85c6006a/r/composite_sv_NORMAL_154542dd-8492-4f8d-a844-bafa8365beb4_628a926b-a632-49ab-8447-fd608fa39549.m3u8';
+$argv[1] = '-ssv:https://vod-l3c-eu-north-1.media.dssott.com/ps01/disney/e92289f6-9625-4ea4-8d00-387e85c6006a/r/composite_sv_NORMAL_154542dd-8492-4f8d-a844-bafa8365beb4_628a926b-a632-49ab-8447-fd608fa39549.m3u8,en:https://vod-l3c-eu-north-1.media.dssott.com/ps01/disney/e92289f6-9625-4ea4-8d00-387e85c6006a/r/composite_sv_NORMAL_154542dd-8492-4f8d-a844-bafa8365beb4_628a926b-a632-49ab-8447-fd608fa39549.m3u8';
 $argv[2] = '-kkorv:bajs';
 
 $videoManifest = isset($argv[1]) ? $argv[1] : null;

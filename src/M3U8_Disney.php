@@ -465,9 +465,14 @@ class M3U8_Disney
      */
     public function setSubtitleManifest($subtitleManifest = [])
     {
-        $this->subtitleManifest = is_string($subtitleManifest) ? (array)$subtitleManifest : $subtitleManifest;
         $newArray = [];
-
+        $this->subtitleManifest = $subtitleManifest;
+        if (is_string($subtitleManifest)) {
+            $this->subtitleManifest = (array)$subtitleManifest;
+            if (preg_match('/,/', $subtitleManifest)) {
+                $this->subtitleManifest = explode(',', $subtitleManifest);
+            }
+        }
         foreach ($this->subtitleManifest as $subManifest) {
             if (!(bool)preg_match('/:http/', $subManifest)) {
                 throw new Exception('Subtitle manifest must be defined with a language like -s<lang>:<url>');
