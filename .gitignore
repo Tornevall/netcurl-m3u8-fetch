@@ -2,8 +2,12 @@
 **.mp4
 **.m4a
 **.txt
+**.vtt
+**.srt
 .idea
 composer.lock
 mp4
+vtt
+srt
 remove
 
