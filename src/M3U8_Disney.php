@@ -134,7 +134,7 @@ class M3U8_Disney
                 $this->subtitleManifestContent = $this->getPlaylistManifest($manifestUrl);
                 $this->getMergedSegments(
                     $this->subtitleManifestContent,
-                    sprintf('sub_%s', $manifestLanguage),
+                    sprintf('%s', $manifestLanguage),
                     $this->subtitleBaseUrl
                 );
             }
