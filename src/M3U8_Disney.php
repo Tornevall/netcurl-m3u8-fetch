@@ -126,6 +126,7 @@ class M3U8_Disney
     {
         $this->cleanupDestination();
 
+        printf("Checking videoManifest (%s)...\n", $this->videoManifest);
         if (!empty($this->videoManifest)) {
             $this->videoManifestContent = $this->getPlaylistManifest($this->videoManifest);
             $this->videoSegmentCount = $this->getSegmentCount($this->videoManifestContent);
@@ -133,6 +134,8 @@ class M3U8_Disney
             echo "=== VIDEO SEGMENT REQUEST ===\n";
             $this->getMergedSegments($this->videoManifestContent, 'encvid', $this->videoBaseUrl);
         }
+
+        printf("Checking audioManifest (%s)...\n", $this->audioManifest);
         if (!empty($this->audioManifest)) {
             $this->audioManifestContent = $this->getPlaylistManifest($this->audioManifest);
             $this->audioSegmentCount = $this->getSegmentCount($this->audioManifestContent);
@@ -140,6 +143,8 @@ class M3U8_Disney
             echo "=== AUDIO SEGMENT REQUEST ===\n";
             $this->getMergedSegments($this->audioManifestContent, 'audio', $this->audioBaseUrl);
         }
+
+        echo "Checking subtitleManifest (is array)...\n";
         if (!empty($this->subtitleManifest)) {
             foreach ($this->subtitleManifest as $manifestLanguage => $manifestUrl) {
                 $this->subTitleRow = 0;

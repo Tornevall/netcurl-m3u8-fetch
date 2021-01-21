@@ -50,6 +50,8 @@ try {
                     case 's':
                         $downloader->setSubtitleManifest($rest);
                         break;
+                    case 'n':
+                        $outputName = $rest;
                     default:
                 }
             }
