@@ -84,14 +84,13 @@ class M3U8_Disney
      * @var bool
      */
     private $hasByteOrder = false;
-    private $subTitleRow = 1;
+    private $subTitleRow;
 
     /**
      * Download constructor.
      */
     public function __construct()
     {
-        $this->subTitleRow = 0;
         $this->wrapper = new CurlWrapper();
         $this->wrapper->setTimeout(30);
         $config = new WrapperConfig();
@@ -143,6 +142,7 @@ class M3U8_Disney
         }
         if (!empty($this->subtitleManifest)) {
             foreach ($this->subtitleManifest as $manifestLanguage => $manifestUrl) {
+                $this->subTitleRow = 0;
                 $this->subtitleBaseUrl = $this->getBaseUrl($manifestUrl);
                 $this->subtitleManifestContent = $this->getPlaylistManifest($manifestUrl);
                 $this->getMergedSegments(
