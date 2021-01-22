@@ -84,7 +84,14 @@ class M3U8_Disney
      * @var bool
      */
     private $hasByteOrder = false;
+    /**
+     * @var int Which row the subtitle is on, in count.
+     */
     private $subTitleRow;
+    /**
+     * @var bool $isMultiAudio Multiple language import boolean.
+     */
+    private $isMultiAudio = false;
 
     /**
      * Download constructor.
@@ -111,10 +118,30 @@ class M3U8_Disney
     /**
      * @param $manifestUrl
      * @return $this
+     * @throws Exception
      */
     public function setAudioManifest($manifestUrl)
     {
         $this->audioManifest = $manifestUrl;
+
+        $newArray = [];
+        if (is_string($manifestUrl)) {
+            if (preg_match('/,/', $manifestUrl)) {
+                $this->audioManifest = explode(',', $manifestUrl);
+                foreach ($this->audioManifest as $audManifest) {
+                    if (!(bool)preg_match('/:http/', $audManifest)) {
+                        throw new Exception('Subtitle manifest must be defined with a language like -s<lang>:<url>');
+                    }
+                    $explodeManifest = explode(':', $audManifest, 2);
+                    $newArray[$explodeManifest[0]] = $explodeManifest[1];
+                }
+
+                if (!empty($newArray)) {
+                    $this->audioManifest = $newArray;
+                }
+            }
+        }
+
         return $this;
     }
 
@@ -142,6 +169,11 @@ class M3U8_Disney
             $this->subtitleManifestContent = [];
         }
 
+        printf("Checking audioManifest (handled as array)...\n", $this->audioManifest);
+        if (!empty($this->audioManifest)) {
+            $this->getCheckedAudioManifest();
+        }
+
         printf("Checking videoManifest (%s)...\n", $this->videoManifest);
         if (!empty($this->videoManifest)) {
             $this->videoManifestContent = $this->getPlaylistManifest($this->videoManifest);
@@ -149,15 +181,6 @@ class M3U8_Disney
             $this->videoBaseUrl = $this->getBaseUrl($this->videoManifest);
             echo "=== VIDEO SEGMENT REQUEST ===\n";
             $this->getMergedSegments($this->videoManifestContent, 'encvid', $this->videoBaseUrl);
-        }
-
-        printf("Checking audioManifest (%s)...\n", $this->audioManifest);
-        if (!empty($this->audioManifest)) {
-            $this->audioManifestContent = $this->getPlaylistManifest($this->audioManifest);
-            $this->audioSegmentCount = $this->getSegmentCount($this->audioManifestContent);
-            $this->audioBaseUrl = $this->getBaseUrl($this->audioManifest);
-            echo "=== AUDIO SEGMENT REQUEST ===\n";
-            $this->getMergedSegments($this->audioManifestContent, 'audio', $this->audioBaseUrl);
         }
 
         return $this;
@@ -170,7 +193,7 @@ class M3U8_Disney
     {
         $filelist = scandir($this->storeDestination);
         foreach ($filelist as $file) {
-            if (preg_match('/.mp|.vtt|.srt/', $file)) {
+            if (preg_match('/.mp|.vtt|.srt|.txt/', $file)) {
                 printf("Unlink %s.\n", $file);
                 unlink(
                     sprintf('%s/%s', $this->storeDestination, $file)
@@ -178,34 +201,6 @@ class M3U8_Disney
             }
         }
         return $this;
-    }
-
-    /**
-     * Extract manifest as array.
-     * @param $manifestUrl
-     * @return array|mixed
-     * @throws ExceptionHandler
-     */
-    private function getPlaylistManifest($manifestUrl)
-    {
-        return explode("\n", $this->wrapper->request($manifestUrl)->getBody());
-    }
-
-    /**
-     * @param array $content
-     * @return int
-     */
-    private function getSegmentCount($content)
-    {
-        $segmentCount = 0;
-
-        foreach ($content as $row) {
-            if (!preg_match('/^#/', $row)) {
-                $segmentCount++;
-            }
-        }
-
-        return $segmentCount;
     }
 
     /**
@@ -218,6 +213,17 @@ class M3U8_Disney
         $uData = array_reverse($uData);
         array_shift($uData);
         return implode("/", array_reverse($uData));
+    }
+
+    /**
+     * Extract manifest as array.
+     * @param $manifestUrl
+     * @return array|mixed
+     * @throws ExceptionHandler
+     */
+    private function getPlaylistManifest($manifestUrl)
+    {
+        return explode("\n", $this->wrapper->request($manifestUrl)->getBody());
     }
 
     /**
@@ -295,17 +301,6 @@ class M3U8_Disney
         if ($return === 'vtt') {
             $return = 'srt'; // Trying to convert here.
         }
-
-        /*        if (preg_match('_', $typeName)) {
-                    $typeEx = explode('_', $typeName);
-                    switch ($typeEx[0]) {
-                        case 'sub':
-                            $return = 'srt';
-                            break;
-                        default:
-                            break;
-                    }
-                }*/
 
         return $return;
     }
@@ -450,6 +445,45 @@ class M3U8_Disney
         }
 
         return $return;
+    }
+
+    /**
+     * Handle multiple audio manifests.
+     * @throws ExceptionHandler
+     */
+    private function getCheckedAudioManifest()
+    {
+        if (is_string($this->audioManifest)) {
+            $this->audioManifest = ['normal' => $this->audioManifest];
+        }
+        foreach ($this->audioManifest as $audioKey => $manifestUrl) {
+            $this->audioManifestContent = $this->getPlaylistManifest($manifestUrl);
+            $this->audioSegmentCount = $this->getSegmentCount($this->audioManifestContent);
+            $this->audioBaseUrl = $this->getBaseUrl($manifestUrl);
+            echo "=== AUDIO SEGMENT REQUEST ===\n";
+            $this->getMergedSegments(
+                $this->audioManifestContent,
+                sprintf('audio_%s_', $audioKey),
+                $this->audioBaseUrl
+            );
+        }
+    }
+
+    /**
+     * @param array $content
+     * @return int
+     */
+    private function getSegmentCount($content)
+    {
+        $segmentCount = 0;
+
+        foreach ($content as $row) {
+            if (!preg_match('/^#/', $row)) {
+                $segmentCount++;
+            }
+        }
+
+        return $segmentCount;
     }
 
     /**

@@ -6,14 +6,13 @@ use M3U8\M3U8_Detect;
 
 require_once(__DIR__ . '/vendor/autoload.php');
 
-// $argv = [];
-
+// Debugging.
+//$mergeOnly = true;
 $videoManifest = isset($argv[1]) ? $argv[1] : null;
 $audioManifest = isset($argv[2]) ? $argv[2] : null;
 $keys = isset($argv[3]) ? $argv[3] : '';
 $outputName = isset($argv[4]) ? $argv[4] : '';
 $subTitleManifest = isset($argv[4]) ? $argv[4] : null;
-die;
 
 $downloader = (new M3U8_Detect($videoManifest))->getManifestClass();
 if (get_class($downloader) === null) {
@@ -76,18 +75,19 @@ if (!$hasArgs) {
  */
 
 // We download and merge everything at once now.
-try {
-    //$downloader = (new M3U8_Detect($videoManifest))->getManifestClass();
-    if (!$hasArgs) {
-        $downloader->setVideoManifest($videoManifest);
-        $downloader->setAudioManifest($audioManifest);
-        if (!empty($subTitleManifest)) {
-            $downloader->setSubtitleManifest($subTitleManifest);
+if (!$mergeOnly) {
+    try {
+        if (!$hasArgs) {
+            $downloader->setVideoManifest($videoManifest);
+            $downloader->setAudioManifest($audioManifest);
+            if (!empty($subTitleManifest)) {
+                $downloader->setSubtitleManifest($subTitleManifest);
+            }
         }
+        $downloader->exec();
+    } catch (Exception $e) {
+        die($e->getMessage() . "\n");
     }
-    $downloader->exec();
-} catch (Exception $e) {
-    die($e->getMessage() . "\n");
 }
 
 $fileHandler = new FileHandler();

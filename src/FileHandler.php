@@ -64,6 +64,10 @@ class FileHandler
      * @var string
      */
     private $finalRenameName;
+    /**
+     * @var bool
+     */
+    private $useMetaTitles = false;
 
     /**
      * FileHandler constructor.
@@ -99,25 +103,6 @@ class FileHandler
             $this->ffmpeg = $binaryFile;
         }
         return $this;
-    }
-
-    /**
-     * @param $keyString
-     * @return $this
-     */
-    public function setWideVineKeys($keyString)
-    {
-        $this->wideVineKeys = trim($keyString);
-
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getWideVineKeys()
-    {
-        return $this->wideVineKeys;
     }
 
     /**
@@ -159,14 +144,95 @@ class FileHandler
                     case (bool)preg_match('/vid(.\d+)/i', $file):
                         $fileListArray['video'][] = $fullName;
                         break;
-                    case (bool)preg_match('/audio(.\d+)/i', $file):
-                        $fileListArray['audio'][] = $fullName;
+                    case (bool)preg_match('/audio_(.*?)_(.\d+)/i', $file):
+                        $splitAudioKeys = explode('_', $file);
+                        if (is_array($splitAudioKeys) && count($splitAudioKeys)) {
+                            if (!isset($fileListArray['audio'][$splitAudioKeys[1]])) {
+                                $fileListArray['audio'][$splitAudioKeys[1]] = [];
+                            }
+                            $fileListArray['audio'][$splitAudioKeys[1]][] = $fullName;
+                        }
                         break;
                     default:
                 }
             }
         }
         $this->files = $fileListArray;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getWideVineKeys()
+    {
+        return $this->wideVineKeys;
+    }
+
+    /**
+     * @param $keyString
+     * @return $this
+     */
+    public function setWideVineKeys($keyString)
+    {
+        $this->wideVineKeys = trim($keyString);
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    private function getDecrypted()
+    {
+        if (!$this->wideVineKeys) {
+            echo "Keys not included in this session. Ignoring\n";
+            return $this;
+        }
+
+        foreach ($this->files['video'] as $file) {
+            $getName = basename($file);
+            if ((bool)preg_match('/^enc/i', $getName)) {
+                $getFileNum = preg_replace('/\D./', '$1', $getName);
+                $storeAs = sprintf(
+                    '%s/decvid%s.mp4',
+                    $this->storeDestination,
+                    $getFileNum
+                );
+
+                printf("Decrypting %s with keys %s.\n", $getName, $this->wideVineKeys);
+                $this->getDecryptedVideo(
+                    $file,
+                    $storeAs
+                );
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param $encryptedVideoFile
+     * @param $destinationVideoFile
+     * @return mixed
+     */
+    public function getDecryptedVideo($encryptedVideoFile, $destinationVideoFile)
+    {
+        $decodeApplication = sprintf(
+            "%s --key %s %s %s",
+            $this->mpDecryptBinary,
+            $this->wideVineKeys,
+            $encryptedVideoFile,
+            $destinationVideoFile
+        );
+
+        try {
+            //exec($decodeApplication, $output, $return);
+            system($decodeApplication, $return);
+        } catch (Exception $e) {
+            // Ignore errors.
+        }
+
+        return $return;
     }
 
     /**
@@ -183,11 +249,12 @@ class FileHandler
 
         // Rescan files.
         $this->getFileList();
-        $this->setConcatFile($this->files['audio'], $this->concatAudioFile);
-        $this->setConcatFile($this->files['video'], $this->concatVideoFile);
-        $this->ffConcatenate($this->concatAudioFile, $this->mergeAudioName, 'audio');
+        $this->setConcatFile($this->files['audio'], $this->concatAudioFile, 'audio');
+        $this->setConcatFile($this->files['video'], $this->concatVideoFile, 'video');
+        foreach ($this->concatAudioFile as $audioKey => $audioFile) {
+            $this->ffConcatenate($audioFile, $this->mergeAudioName[$audioKey], 'audio');
+        }
         $this->ffConcatenate($this->concatVideoFile, $this->mergeVideoName, 'video');
-
         $this->ffMerge($this->mergeVideoName, $this->mergeAudioName);
 
         if (!empty($this->outputName) && file_exists($this->finalVideoName)) {
@@ -244,19 +311,53 @@ class FileHandler
     /**
      * @param $array
      * @param $concatFile
+     * @param $type
      * @return FileHandler
      */
-    private function setConcatFile($array, $concatFile)
+    private function setConcatFile($array, $concatFile, $type)
     {
-        foreach ($array as $file) {
-            if ((bool)preg_match('/dec/i', $file)) {
-                file_put_contents($concatFile, sprintf("file '%s'\n", $file), FILE_APPEND);
+        if ($type === 'video') {
+            $this->setConcatFileArray($array, $concatFile);
+        } elseif ($type === 'audio') {
+            $defaultAudioName = $this->mergeAudioName;
+            $this->concatAudioFile = [];
+            $this->mergeAudioName = [];
+            foreach ($array as $track => $fileList) {
+                $newConcatFile = preg_replace(
+                    '/concat_audio.txt$/i',
+                    sprintf(
+                        'concat_audio_%s.txt',
+                        $track
+                    ),
+                    $concatFile
+                );
+                $this->concatAudioFile[$track] = $newConcatFile;
+                $this->mergeAudioName[$track] = preg_replace('/\/merge\./i', sprintf('/merge_%s.', $track),
+                    $defaultAudioName);
+                $this->setConcatFileArray($fileList, $newConcatFile);
             }
-            if ((bool)preg_match('/audio/i', $file)) {
-                file_put_contents($concatFile, sprintf("file '%s'\n", $file), FILE_APPEND);
+            if (is_array($this->concatAudioFile) && count($this->concatAudioFile) > 1) {
+                $this->useMetaTitles = true;
             }
         }
         return $this;
+    }
+
+    /**
+     * @param $array
+     * @param $concatFile
+     */
+    private function setConcatFileArray($array, $concatFile)
+    {
+        foreach ($array as $file) {
+            $setFileName = sprintf("file '%s'\n", $file);
+            if ((bool)preg_match('/dec/i', $file)) {
+                file_put_contents($concatFile, $setFileName, FILE_APPEND);
+            }
+            if ((bool)preg_match('/audio/i', $file)) {
+                file_put_contents($concatFile, $setFileName, FILE_APPEND);
+            }
+        }
     }
 
     /**
@@ -272,19 +373,21 @@ class FileHandler
         if (!empty($concatFile) && file_exists($concatFile)) {
             switch ($type) {
                 case 'video':
-                    $concatString = "-f concat -safe 0 -i %s -c:v copy %s";
+                    $concatString = "-y -f concat -safe 0 -i %s -c:v copy %s";
                     break;
                 case 'audio':
-                    $concatString = "-f concat -safe 0 -i %s -c:a copy %s";
+                    $concatString = "-y -f concat -safe 0 -i %s -c:a copy %s";
                     break;
                 default:
             }
             if (!empty($concatString)) {
-                $this->ffExec(sprintf(
-                    $concatString,
-                    $concatFile,
-                    $mergeName
-                ));
+                $this->ffExec(
+                    sprintf(
+                        $concatString,
+                        $concatFile,
+                        $mergeName
+                    )
+                );
             }
         }
         return $return;
@@ -303,17 +406,6 @@ class FileHandler
     }
 
     /**
-     * @param $outputName
-     * @return FileHandler
-     */
-    public function setOutPutName($outputName)
-    {
-        $this->outputName = $outputName;
-
-        return $this;
-    }
-
-    /**
      * @param $concatVideoFile
      * @param $concatAudioFile
      * @return $this
@@ -322,17 +414,42 @@ class FileHandler
     {
         $mergedVideoName = $this->getFullFileName('merged_video.mp4');
         $this->cleanFiles([$mergedVideoName]);
-        if (file_exists($concatVideoFile) && file_exists($concatAudioFile)) {
-            $this->ffExec(
-                sprintf(
-                    '-i %s -i %s -c:v copy -c:a aac %s',
-                    $concatVideoFile,
-                    $concatAudioFile,
-                    $mergedVideoName
-                )
-            );
+        if (file_exists($concatVideoFile)) {
+            $mergeString = sprintf('-y -i %s ', $concatVideoFile);
+            $mapString = '-map 0:v ';
+            $metaString = '';
+            $mapCounter = 0;
+            $metaCounter = 0;
+            foreach ($concatAudioFile as $concatMap => $concatAudioFile) {
+                if (file_exists($concatAudioFile)) {
+                    $mapCounter++;
+                    if ($this->useMetaTitles) {
+                        // Define each track with metadata if there are more than one.
+                        $metaString .= sprintf('-metadata:s:a:%d title="%s" ', $metaCounter, $concatMap);
+                        // Counting in this case is a bit different to the mapping. So we're in lazy mode.
+                        $metaCounter++;
+                    }
+                    $mergeString .= sprintf('-i %s ', $concatAudioFile);
+                    $mapString .= sprintf('-map %s:a ', $mapCounter);
+                }
+            }
+            $mergeString .= $mapString;
+            $mergeString .= $metaString;
+            $mergeString .= sprintf('-c:v copy -c:a aac %s', $mergedVideoName);
+
+            $this->ffExec($mergeString);
         }
 
+        return $this;
+    }
+
+    /**
+     * @param $outputName
+     * @return FileHandler
+     */
+    public function setOutPutName($outputName)
+    {
+        $this->outputName = $outputName;
 
         return $this;
     }
@@ -346,62 +463,6 @@ class FileHandler
     {
         $ffmpegCmd = sprintf("%s -i %s %s", $this->ffmpeg, $source, $destination);
         exec($ffmpegCmd, $output, $return);
-
-        return $return;
-    }
-
-    /**
-     * @return $this
-     */
-    private function getDecrypted()
-    {
-        if (!$this->wideVineKeys) {
-            echo "Keys not included in this session. Ignoring\n";
-            return $this;
-        }
-
-        foreach ($this->files['video'] as $file) {
-            $getName = basename($file);
-            if ((bool)preg_match('/^enc/i', $getName)) {
-                $getFileNum = preg_replace('/\D./', '$1', $getName);
-                $storeAs = sprintf(
-                    '%s/decvid%s.mp4',
-                    $this->storeDestination,
-                    $getFileNum
-                );
-
-                printf("Decrypting %s with keys %s.\n", $getName, $this->wideVineKeys);
-                $this->getDecryptedVideo(
-                    $file,
-                    $storeAs
-                );
-            }
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param $encryptedVideoFile
-     * @param $destinationVideoFile
-     * @return mixed
-     */
-    public function getDecryptedVideo($encryptedVideoFile, $destinationVideoFile)
-    {
-        $decodeApplication = sprintf(
-            "%s --key %s %s %s",
-            $this->mpDecryptBinary,
-            $this->wideVineKeys,
-            $encryptedVideoFile,
-            $destinationVideoFile
-        );
-
-        try {
-            //exec($decodeApplication, $output, $return);
-            system($decodeApplication, $return);
-        } catch (Exception $e) {
-            // Ignore errors.
-        }
 
         return $return;
     }
