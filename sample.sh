@@ -1,7 +1,7 @@
-./download.php \
-	-vhttps://vod-l3c-eu-north-1.media.dssott.com/ps01/disney/94c895e3-ef7f-4318-97b8-ae144c5b09d0/r/composite_4250k_CENC_CTR_FHD_SDR_832587c5-50f3-4be4-b16c-78c8e7ae0127_b3cb20f4-3c0f-40b5-8ca4-3ac2dbff1ed1.m3u8 \
-	-ahttps://vod-l3c-eu-north-1.media.dssott.com/ps01/disney/94c895e3-ef7f-4318-97b8-ae144c5b09d0/r/composite_128k_mp4a.40.2_en_PRIMARY_5e36f47d-f6d5-456d-9e4c-e58a39ff7c14_b3cb20f4-3c0f-40b5-8ca4-3ac2dbff1ed1.m3u8 \
-	-k4b2758d11e5c4206af6dffd324e72bd8:c91707f2c6b7d5fc4358092afa126e7c \
-	-oWVE02.mp4 \
-	-ssv:https://vod-l3c-eu-north-1.media.dssott.com/ps01/disney/94c895e3-ef7f-4318-97b8-ae144c5b09d0/r/composite_sv_NORMAL_77ced72e-1769-4477-b58b-b82ac6898a13_b3cb20f4-3c0f-40b5-8ca4-3ac2dbff1ed1.m3u8,fi:https://vod-l3c-eu-north-1.media.dssott.com/ps01/disney/94c895e3-ef7f-4318-97b8-ae144c5b09d0/r/composite_fi_NORMAL_1524ebba-0b8d-4445-82f8-671a9a98937d_b3cb20f4-3c0f-40b5-8ca4-3ac2dbff1ed1.m3u8,no:https://vod-l3c-eu-north-1.media.dssott.com/ps01/disney/94c895e3-ef7f-4318-97b8-ae144c5b09d0/r/composite_no_NORMAL_75c4c284-8943-4024-89ec-f092642731ca_b3cb20f4-3c0f-40b5-8ca4-3ac2dbff1ed1.m3u8,en:https://vod-l3c-eu-north-1.media.dssott.com/ps01/disney/94c895e3-ef7f-4318-97b8-ae144c5b09d0/r/composite_en_SDH_0c9d9a47-cf45-47d8-991b-e3132541c517_b3cb20f4-3c0f-40b5-8ca4-3ac2dbff1ed1.m3u8,da:https://vod-l3c-eu-north-1.media.dssott.com/ps01/disney/94c895e3-ef7f-4318-97b8-ae144c5b09d0/r/composite_da_NORMAL_0bb1f9d5-e778-4174-bcd5-db589b74db64_b3cb20f4-3c0f-40b5-8ca4-3ac2dbff1ed1.m3u8
+#!/bin/bash
 
+# -vvideo.m3u8
+# -aaudio.m3u8 | -aLang1:lang1.m3u8,Lang2:lang2.m3u8
+# -kkeys
+# -slang1:sub1.m3u8,lang2:sub2.m3u8
+# -ooutput
