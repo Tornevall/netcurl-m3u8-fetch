@@ -7,7 +7,14 @@ if (!isset($argv[1])) {
     printf("Usage: %s <playlist>\n", $argv[0]);
     exit(1);
 }
+
+if (!file_exists('tmp')) {
+    mkdir('tmp');
+}
+
 $download = new Playlist\Download();
 $download->setStoreDestination(__DIR__ . '/tmp');
-$download->setManifest($argv[1]);
+// Instead of injecting separate manifests, we now push the major collector instead.
+$download->getDetectedManifest($argv[1]);
+//$download->setManifest($argv[1]);
 $download->exec();
