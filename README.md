@@ -50,6 +50,10 @@ use the curl wrapper or the auto selective wrapper. In this example, the auto se
 since curl may not be the standard library on a system (note: if curl is not present, the driver will fall back
 on the streams wrapper in PHP and use a binary safe method to download).
 
+## Timeouts
+
+Make sure you update the netcurl library or the setTimeout will have no effect.
+
 ## Testing with the bundled files
 
 You should start with the download.php file in the root path and follow the method calls, to see how it is built.

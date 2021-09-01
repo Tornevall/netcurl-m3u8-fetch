@@ -523,19 +523,46 @@ class Download
                     break;
                 default:
                     if (preg_match('/DUB(.*?)vtt$/', $row)) {
-                        continue 2;
+                        continue;
+                    }
+
+                    printf("Merge [Segment %d of %d] %s (%s).\n", $rowCount, $rows, $row, $destinationName);
+                    while (!$this->getSegment($destinationName, $row, $basePath)) {
+                        // Wait for success.
                     }
 
                     $rowCount++;
-                    printf("Merge [Segment %d of %d] %s (%s).\n", $rowCount, $rows, $row, $destinationName);
-                    try {
-                        $this->setContentData($destinationName, $row, $basePath);
-                    } catch (ExceptionHandler $e) {
-                        printf("Skipped segment due to error %d: %s\n", $e->getCode(), $e->getMessage());
-                    }
                     break;
             }
         }
+    }
+
+    /**
+     * @param $destinationName
+     * @param $row
+     * @param $basePath
+     */
+    private function getSegment($destinationName, $row, $basePath, $retry = false)
+    {
+        $return = false;
+
+        try {
+            $this->setContentData($destinationName, $row, $basePath);
+            $return = true;
+            if ($retry && $return) {
+                echo "Segment OK\n";
+            }
+        } catch (ExceptionHandler $e) {
+            // Retry on timeouts.
+            if ($e->getCode() === 28) {
+                printf("Retry: Segment error %d: %s\n", $e->getCode(), $e->getMessage());
+                $return = $this->getSegment($destinationName, $row, $basePath, true);
+            } else {
+                printf("Skipped segment due to error %d: %s\n", $e->getCode(), $e->getMessage());
+            }
+        }
+
+        return $return;
     }
 
     /**
