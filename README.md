@@ -1,12 +1,12 @@
 # The library
 
-## Preface
+## PREFACE
 
 This script library demonstrates the potential in the NetCurl project, that was initially created to simply scrape open
 proxies. As it seems, it can do much more than that. This library neither contains anything that circumvents any
 licensing and is used exclusively to show how to merge segmented content into one file.
 
-## Repository copies
+## REPOSITORY COPIES
 
 Since bitbucket server is about to end its support, my intentions is to leave bitbucket server for github. However, all
 projects I am working with resides there, still as a main version of the content put at github. Not far from now, I have
@@ -14,7 +14,7 @@ intentions to change that, so Bitbucket will be considered a backup only.
 
 So: This repository is mirrored at https://bitbucket.tornevall.net/users/tornevall/repos/netcurl-m3u8-fetch
 
-# About the library
+# ABOUT THIS LIBRARY
 
 The library used can be found at [http://netcurl.org](http://netcurl.org). The documentation of the netcurl project can
 be furthermore be found at [docs.tornevall.net](https://docs.tornevall.net/display/TORNEVALL/NETCURLv6.1). Note: When
@@ -40,7 +40,7 @@ The project example is in a single part based on the m3u format, *if* content ba
 discovered (the DISCONTINUITY field that separates more file segments). However, it is used to show how the netcurl
 library works, where you don't have to think about setting up the driver yourself, at all.
 
-## The first idea
+## THE FIRST IDEA
 
 There was an initial idea around to run curl through a script like this:
 
@@ -50,9 +50,9 @@ There was an initial idea around to run curl through a script like this:
 This is actually the easiest way of just downloading data. However, playlists may contain multiple content that has to
 be split up into own files and this is where the journey began.
 
-## How do I test this?
+## DOW DO I TEST THIS?
 
-Well, first of all - add a composer script containing the library itself:
+Well, first of all - add a composer script containing the library itself. Make sure it is always upgraded.
 
     {
         "require": {
@@ -66,11 +66,7 @@ curl wrapper or the auto selective wrapper. In this example, the auto selective 
 the standard library on a system (note: if curl is not present, the driver will fall back on the streams wrapper in PHP
 and use a binary safe method to download).
 
-## Timeouts
-
-Make sure you update the netcurl library or the setTimeout will have no effect.
-
-## Testing with the bundled files
+## TESTING WITH THE BUNDLED FILES
 
 You should start with the download.php file in the root path and follow the method calls, to see how it is built. I call
 this "reverse engineering". You are however not alone. Netcurl comes with a documentation at
