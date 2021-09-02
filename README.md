@@ -6,6 +6,9 @@ This script library demonstrates the potential in the NetCurl project, that was 
 proxies. As it seems, it can do much more than that. This library neither contains anything that circumvents any
 licensing and is used exclusively to show how to merge segmented content into one file.
 
+The project itself started as an experiment, so it might want to be rewritten as the number of parameters in, from
+console has grown since the start.
+
 ## REPOSITORY COPIES
 
 Since bitbucket server is about to end its support, my intentions is to leave bitbucket server for github. However, all
