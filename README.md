@@ -28,9 +28,11 @@ at [docs.tornevall.net](https://docs.tornevall.net/display/TORNEVALL/NETCURLv6.1
 This is a very simple way of just downloading data top down from a file. However, some manifests includes multiple
 content, which forces us to put and merge files into multiple content. This is a backside when you for example using a
 playlist based on the [m3u](https://en.wikipedia.org/wiki/M3U) format. Many years from now, m3u playlists was written as
-a local playlist for mp3 files. But for m3u8 files it has been a common way to stream multiple files, for example movies
+a local playlist for mp3 files. But for m3u8 files it has been a common way to stream for example movies - as the
+wikipedia also states.
 
-- as the wikipedia also states.
+It has been tested and is still confirmed to work. However, it is not tested over many sites, so if it doesn't work for
+you, it is probably because it is not adaptive enough.
 
 The project is used as an educational example of how to simplify manual downloads of a playlist. It has been created
 after several discussions on various forums where suggestions are either splitted up on multiple discussion threads, or
