@@ -14,12 +14,14 @@ intentions to change that, so Bitbucket will be considered a backup only.
 
 So: This repository is mirrored at https://bitbucket.tornevall.net/users/tornevall/repos/netcurl-m3u8-fetch
 
-# ABOUT THIS LIBRARY
+# NETCURL
 
-The library used can be found at [http://netcurl.org](http://netcurl.org). The documentation of the netcurl project can
-be furthermore be found at [docs.tornevall.net](https://docs.tornevall.net/display/TORNEVALL/NETCURLv6.1). Note: When
-using composer, the actual project lies within github [here](https://github.com/Tornevall/tornelib-php-netcurl)
-to maintain stability and reachability for deployers.
+The main netcurl repository is still located at [https://netcurl.org](https://netcurl.org). However, all new releases to
+packagist are pointing at https://github.com/Tornevall/tornelib-php-netcurl to make sure it is always available for
+download. The plan is, as all other projects, to migrate as much as possible to github before the Atlassian server EOL.
+
+The documentation of the netcurl project is currently located at
+at [docs.tornevall.net](https://docs.tornevall.net/display/TORNEVALL/NETCURLv6.1).
 
 # netcurl-download
 
